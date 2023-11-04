@@ -1,0 +1,257 @@
+<main class="container">
+    <div class="row"> <!-- This row will contain both cards side by side -->
+        <!-- Card for Generate Video Section -->
+        <div class="col s12 m6"> <!-- This makes the card take up half the width on medium screens and up -->
+            <div class="card hoverable">
+                <div class="card-content">
+                    <span class="card-title center-align">Generate Video</span>
+                    <div class="input-field">
+                        <i class="material-icons prefix">link</i>
+                        <input id="wikipediaUrl" type="url" class="validate" required>
+                        <label for="wikipediaUrl">Wikipedia URL</label>
+                    </div>
+                    <div class="center-align">
+                        <button id="generateBtn" class="btn-large waves-effect waves-light deep-purple darken-1">Generate</button>
+                        <div id="tokenMessageCard" class="card-panel green lighten-4" style="display: none;">
+                            <span id="tokenMessage" class="green-text text-darken-4"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card for Check Video Status Section -->
+        <div class="col s12 m6"> <!-- This makes the card take up half the width on medium screens and up -->
+            <div class="card hoverable">
+                <div class="card-content">
+                    <span class="card-title center-align">Check Video Status</span>
+                    <div class="input-field">
+                        <i class="material-icons prefix">video_library</i>
+                        <input id="tokenCheck" type="text" class="validate" required>
+                        <label for="tokenCheck">Enter Token</label>
+                    </div>
+                    <div class="center-align">
+                        <button id="checkStatusBtn"
+                            class="btn-large waves-effect waves-light deep-purple darken-1">Check Status</button>
+                        <button id="downloadBtn" class="btn-large waves-effect waves-light deep-purple darken-1"
+                            disabled>Download</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- How to Use Section -->
+<div class="section how-to-use">
+    <div class="row">
+        <h5 class="center-align">How to Use WikiVid</h5>
+    </div>
+    <div class="row">
+        <!-- Step 1: Paste URL -->
+        <div class="col s12 m4">
+            <div class="card hoverable">
+                <div class="card-content center-align">
+                    <i class="material-icons deep-purple-text">link</i>
+                    <p>Paste the Wikipedia URL</p>
+                </div>
+            </div>
+        </div>
+        <!-- Step 2: Generate Token -->
+        <div class="col s12 m4">
+            <div class="card hoverable">
+                <div class="card-content center-align">
+                    <i class="material-icons deep-purple-text">vpn_key</i>
+                    <p>Click "Generate" for token</p>
+                </div>
+            </div>
+        </div>
+        <!-- Step 3: Check Status -->
+        <div class="col s12 m4">
+            <div class="card hoverable">
+                <div class="card-content center-align">
+                    <i class="material-icons deep-purple-text">video_library</i>
+                    <p>Use token to check video</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Style for the How to Use Section -->
+<style>
+    .section.how-to-use {
+        margin-top: 20px;
+    }
+
+    .section.how-to-use h5 {
+        margin-bottom: 20px;
+    }
+
+    .section.how-to-use .card {
+        padding: 10px;
+        height: 150px;
+        /* Adjust the height as needed */
+    }
+
+    .section.how-to-use .card i {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
+
+    .section.how-to-use .card p {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    @media screen and (max-width: 600px) {
+        .section.how-to-use .card {
+            height: auto;
+        }
+    }
+</style>
+
+</main>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script>
+    // This function handles generating the token and video
+    function generateToken() {
+        return $.get("http://localhost:8000/generate-token"); // We return the promise here
+    }
+
+    function generateVideo(url, token) {
+        return $.post("http://localhost:8000/generate-video", {
+            url: url,
+            token: token
+        }); // And also return the promise here
+    }
+
+    function updateGenerateButton(text, disabled) {
+            var button = document.getElementById('generateBtn');
+            button.textContent = text;
+            button.disabled = disabled;
+        }
+
+    function clearInputField() {
+            var inputField = document.getElementById('wikipediaUrl');
+            inputField.value = '';
+        }
+
+     function displayTokenMessage(message, display) {
+            var tokenMessageCard = document.getElementById('tokenMessageCard');
+            var tokenMessage = document.getElementById('tokenMessage');
+            tokenMessage.textContent = message;
+            tokenMessageCard.style.display = display ? 'block' : 'none';
+        }
+
+    // This function validates the given Wikipedia URL
+    function validateURL(url) {
+        if (!url) {
+            return false;
+        }
+        var pattern = new RegExp('^https?:\\/\\/(www\\.)?([a-z]{2})\\.wikipedia\\.org\\/wiki\\/(.+)$', 'i');
+        var invalidCharsPattern = new RegExp('[#<>\\[\\]\\|{}]', 'i');
+        return pattern.test(url) && !invalidCharsPattern.test(url);
+    }
+
+    // Function to validate the token format
+    function validateToken(token) {
+        // The token should be 12 characters long and start with 'WV'
+        var tokenPattern = /^WV[0-9A-F]{10}$/i;
+        return tokenPattern.test(token);
+    }
+
+    function checkArticleExists(url) {
+        // Extract the title from the URL
+        var title = url.split('/wiki/')[1];
+        // Construct the URL for the Wikipedia API
+        var apiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(title)}&origin=*`;
+
+        return fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                var pages = data.query.pages;
+                var pageId = Object.keys(pages)[0];
+                // If pageid is -1, the page does not exist
+                return pageId !== "-1" && !pages[pageId].missing;
+            })
+            .catch(error => {
+                console.error("Error checking Wikipedia article existence:", error);
+                throw error; // Rethrow to handle in the calling function
+            });
+    }
+    // When the DOM is fully loaded, we set up our event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        var generateBtn = document.getElementById('generateBtn');
+        var checkStatusBtn = document.getElementById('checkStatusBtn');
+        var wikipediaUrlInput = document.getElementById('wikipediaUrl');
+        var tokenMessage = document.getElementById('tokenMessage');
+        var tokenMessageCard = document.getElementById('tokenMessageCard');
+        var tokenCheckInput = document.getElementById('tokenCheck');
+        var downloadBtn = document.getElementById('downloadBtn');
+
+        // Event listener for the generate button
+        generateBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            var wikipediaUrl = wikipediaUrlInput.value;
+
+            if (validateURL(wikipediaUrl)) {
+                updateGenerateButton('Checking...', true);
+                // Add timeout to avoid the user waiting indefinitely
+                var checkTimeout = setTimeout(function () {
+                    swal("Taking longer than usual", "Checking the article's existence is taking longer than expected. Please wait...", "info");
+                }, 5000); // 5 seconds timeout
+
+                checkArticleExists(wikipediaUrl)
+                    .then(articleExists => {
+                        clearTimeout(checkTimeout); // Clear the timeout if the check is completed
+                        if (articleExists) {
+                            generateToken().done(function (data) {
+                                var token = data.token;
+                                displayTokenMessage('Your generated token is: ' + token + '. Your request is being processed.', true);
+                                clearInputField();
+                                updateGenerateButton('Generate', false);
+
+                                generateVideo(wikipediaUrl, token).done(function (videoData) {
+                                    console.log('Video generation started', videoData);
+                                    // Update UI to inform user that video generation has started
+                                }).fail(function (jqXHR, textStatus, errorThrown) {
+                                    swal("Failed to Generate Video", textStatus, "error");
+                                    updateGenerateButton('Generate', false);
+                                });
+
+                                swal("Token Generated", "Your request is being processed. Your token is: " + token, "success");
+                            }).fail(function (jqXHR, textStatus, errorThrown) {
+                                swal("Failed to Generate Token", textStatus, "error");
+                                updateGenerateButton('Generate', false);
+                            });
+                        } else {
+                            swal("Article Not Found", "The Wikipedia article does not exist. Please check the URL and try again.", "error");
+                            updateGenerateButton('Generate', false);
+                        }
+                    })
+                    .catch(error => {
+                        clearTimeout(checkTimeout); // Clear the timeout on error too
+                        swal("Error", "There was an error checking the article existence. Please try again.", "error");
+                        updateGenerateButton('Generate', false);
+                    });
+            } else {
+                swal("Invalid URL", "Please enter a proper Wikipedia URL.", "error");
+            }
+        });
+
+        // Consolidated event listener for the check status button
+        checkStatusBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            var token = tokenCheckInput.value;
+            if (validateToken(token)) {
+                // Token is valid, proceed with status check
+                swal("Checking Token", "Please wait while we check the status of your video.", "info");
+                // Implement the API call to check the token status here
+                // ...
+            } else {
+                // Token is invalid
+                swal("Invalid Token", "Please enter a valid token.", "error");
+            }
+        });
+    });
+</script>

@@ -1,0 +1,117 @@
+/* Reset margins and padding to ensure consistency across browsers */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Apply a natural box layout model to all elements */
+html {
+    box-sizing: border-box;
+    height: 100%;
+    /* Full height */
+}
+
+/* Set up the body as a flex container with column direction to align main content and footer */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    /* Full viewport height */
+    font-family: 'Roboto', sans-serif;
+    /* Modern font */
+}
+
+/* Header styles, assuming a fixed height */
+header {
+    background-color: #4527a0;
+    /* Deep purple */
+    padding: 1rem 0;
+    text-align: center;
+}
+
+/* Main content styles, flex grow to push the footer downward */
+main {
+    flex: 1;
+    /* Grows to fill available space */
+    padding: 2rem;
+    /* Spacing inside the main container */
+}
+
+/* Footer styles */
+footer.page-footer {
+    background-color: #4527a0;
+    /* Deep purple */
+    color: white;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+/* Navigation bar styles */
+nav {
+    background-color: #4527a0;
+    /* Deep purple */
+}
+
+/* Card styles */
+.card {
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+}
+
+/* Button styles */
+.btn,
+.btn:hover {
+    background-color: #ffc107;
+    /* Amber */
+}
+
+/* Progress bar styles */
+.progress .indeterminate {
+    background-color: #4527a0;
+    /* Deep purple */
+}
+
+/* Card title styles */
+.card-title {
+    color: #4527a0;
+    /* Deep purple */
+}
+
+/* Input field styles when focused */
+.input-field input[type=text]:focus+label {
+    color: #4527a0;
+    /* Deep purple */
+}
+
+.input-field input[type=text]:focus {
+    border-bottom: 1px solid #4527a0;
+    /* Deep purple underline */
+    box-shadow: 0 1px 0 0 #4527a0;
+    /* Deep purple shadow */
+}
+
+.loader {
+    border: 5px solid #f3f3f3;
+    /* Light grey */
+    border-top: 5px solid #3498db;
+    /* Blue */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 2s linear infinite;
+    margin: auto;
+    display: block;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

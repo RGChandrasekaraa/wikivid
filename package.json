@@ -1,0 +1,22 @@
+{
+  "name": "wikivid-frontend",
+  "version": "1.0.0",
+  "description": "frontend of wikivid",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "wikipedia",
+    "video",
+    "generator"
+  ],
+  "author": "Chantruder",
+  "license": "ISC",
+  "dependencies": {
+    "bootstrap": "^5.3.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-handlebars": "^7.1.2"
+  }
+}
