@@ -1,3 +1,6 @@
+<div class="a2v-title">
+    <h4>Wikipedia Article to Video Generator</h4>
+</div>
 <main class="container">
     <div class="row"> <!-- This row will contain both cards side by side -->
         <!-- Card for Generate Video Section -->
@@ -31,10 +34,19 @@
                         <label for="tokenCheck">Enter Token</label>
                     </div>
                     <div class="center-align">
-                        <button id="checkStatusBtn"
+                        <button id="checkStatusBtn" onclick="checkStatusBtn()"
                             class="btn-large waves-effect waves-light deep-purple darken-1">Check Status</button>
-                        <button id="downloadBtn" class="btn-large waves-effect waves-light deep-purple darken-1"
-                            disabled>Download</button>
+                        <a id="downloadBtn" class="btn-large waves-effect waves-light deep-purple darken-1" style="display:none;"
+                            download>Download</a>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div id="progressContainer" style="display:none;">
+                        <div class="progress">
+                            <div class="indeterminate"></div>
+                        </div>
+                        <p id="statusText" class="center-align">Checking status...</p>
+                    </div>
+                    <div id="downloadListCard" class="card-panel green lighten-4" style="display: none;">
                     </div>
                 </div>
             </div>
@@ -51,7 +63,7 @@
             <div class="card hoverable">
                 <div class="card-content center-align">
                     <i class="material-icons deep-purple-text">link</i>
-                    <p>Paste the Wikipedia URL</p>
+                    <p>Enter a valid Wikipedia article URL</p>
                 </div>
             </div>
         </div>
@@ -60,7 +72,7 @@
             <div class="card hoverable">
                 <div class="card-content center-align">
                     <i class="material-icons deep-purple-text">vpn_key</i>
-                    <p>Click "Generate" for token</p>
+                    <p>Click "Generate" to receive a unique token</p>
                 </div>
             </div>
         </div>
@@ -69,16 +81,27 @@
             <div class="card hoverable">
                 <div class="card-content center-align">
                     <i class="material-icons deep-purple-text">video_library</i>
-                    <p>Use token to check video</p>
+                    <p>Paste your token in Check Video Status to track your video's progress</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-
+<!-- Explanation Section -->
+<div class="row">
+    <div class="col s12">
+        <p>The token acts as your access key to initiate the video creation process and to later download your video
+            once it is ready. Ensure you save your token, as it is required to check the status of your video. When your
+            video is prepared, the "Check Video Status" page will show an update, and you will be able to download your
+            video using the same token.</p>
+    </div>
+</div>
 <!-- Style for the How to Use Section -->
 <style>
+    .a2v-title {
+        text-align: center;
+    }
+    
     .section.how-to-use {
         margin-top: 20px;
     }
@@ -100,7 +123,8 @@
 
     .section.how-to-use .card p {
         margin: 0;
-        font-size: 0.9rem;
+        font-size: 1rem;
+        /* Increased font size for better readability */
     }
 
     @media screen and (max-width: 600px) {
@@ -113,145 +137,199 @@
 </main>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script>
-    // This function handles generating the token and video
-    function generateToken() {
-        return $.get("http://localhost:8000/generate-token"); // We return the promise here
-    }
+    var statusPolling; // This variable will hold the reference to the polling interval/timeout
+            // This function handles generating the token and video
+            function generateToken() {
+                return $.get("/api/generate-token");
+            }
 
-    function generateVideo(url, token) {
-        return $.post("http://localhost:8000/generate-video", {
-            url: url,
-            token: token
-        }); // And also return the promise here
-    }
+            function generateVideo(url, token) {
+                return $.post("/api/generate-video", { url: url, token: token });
+            }
 
-    function updateGenerateButton(text, disabled) {
-            var button = document.getElementById('generateBtn');
-            button.textContent = text;
-            button.disabled = disabled;
-        }
+            function updateGenerateButton(text, disabled) {
+                $('#generateBtn').text(text).prop('disabled', disabled);
+            }
 
-    function clearInputField() {
-            var inputField = document.getElementById('wikipediaUrl');
-            inputField.value = '';
-        }
+            function checkArticleExists(url) {
+                var title = url.split('/wiki/')[1];
+                var apiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(title)}&origin=*`;
 
-     function displayTokenMessage(message, display) {
-            var tokenMessageCard = document.getElementById('tokenMessageCard');
-            var tokenMessage = document.getElementById('tokenMessage');
-            tokenMessage.textContent = message;
-            tokenMessageCard.style.display = display ? 'block' : 'none';
-        }
-
-    // This function validates the given Wikipedia URL
-    function validateURL(url) {
-        if (!url) {
-            return false;
-        }
-        var pattern = new RegExp('^https?:\\/\\/(www\\.)?([a-z]{2})\\.wikipedia\\.org\\/wiki\\/(.+)$', 'i');
-        var invalidCharsPattern = new RegExp('[#<>\\[\\]\\|{}]', 'i');
-        return pattern.test(url) && !invalidCharsPattern.test(url);
-    }
-
-    // Function to validate the token format
-    function validateToken(token) {
-        // The token should be 12 characters long and start with 'WV'
-        var tokenPattern = /^WV[0-9A-F]{10}$/i;
-        return tokenPattern.test(token);
-    }
-
-    function checkArticleExists(url) {
-        // Extract the title from the URL
-        var title = url.split('/wiki/')[1];
-        // Construct the URL for the Wikipedia API
-        var apiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&titles=${encodeURIComponent(title)}&origin=*`;
-
-        return fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                var pages = data.query.pages;
-                var pageId = Object.keys(pages)[0];
-                // If pageid is -1, the page does not exist
-                return pageId !== "-1" && !pages[pageId].missing;
-            })
-            .catch(error => {
-                console.error("Error checking Wikipedia article existence:", error);
-                throw error; // Rethrow to handle in the calling function
-            });
-    }
-    // When the DOM is fully loaded, we set up our event listeners
-    document.addEventListener('DOMContentLoaded', function () {
-        var generateBtn = document.getElementById('generateBtn');
-        var checkStatusBtn = document.getElementById('checkStatusBtn');
-        var wikipediaUrlInput = document.getElementById('wikipediaUrl');
-        var tokenMessage = document.getElementById('tokenMessage');
-        var tokenMessageCard = document.getElementById('tokenMessageCard');
-        var tokenCheckInput = document.getElementById('tokenCheck');
-        var downloadBtn = document.getElementById('downloadBtn');
-
-        // Event listener for the generate button
-        generateBtn.addEventListener('click', function (event) {
-            event.preventDefault();
-            var wikipediaUrl = wikipediaUrlInput.value;
-
-            if (validateURL(wikipediaUrl)) {
-                updateGenerateButton('Checking...', true);
-                // Add timeout to avoid the user waiting indefinitely
-                var checkTimeout = setTimeout(function () {
-                    swal("Taking longer than usual", "Checking the article's existence is taking longer than expected. Please wait...", "info");
-                }, 5000); // 5 seconds timeout
-
-                checkArticleExists(wikipediaUrl)
-                    .then(articleExists => {
-                        clearTimeout(checkTimeout); // Clear the timeout if the check is completed
-                        if (articleExists) {
-                            generateToken().done(function (data) {
-                                var token = data.token;
-                                displayTokenMessage('Your generated token is: ' + token + '. Your request is being processed.', true);
-                                clearInputField();
-                                updateGenerateButton('Generate', false);
-
-                                generateVideo(wikipediaUrl, token).done(function (videoData) {
-                                    console.log('Video generation started', videoData);
-                                    // Update UI to inform user that video generation has started
-                                }).fail(function (jqXHR, textStatus, errorThrown) {
-                                    swal("Failed to Generate Video", textStatus, "error");
-                                    updateGenerateButton('Generate', false);
-                                });
-
-                                swal("Token Generated", "Your request is being processed. Your token is: " + token, "success");
-                            }).fail(function (jqXHR, textStatus, errorThrown) {
-                                swal("Failed to Generate Token", textStatus, "error");
-                                updateGenerateButton('Generate', false);
-                            });
-                        } else {
-                            swal("Article Not Found", "The Wikipedia article does not exist. Please check the URL and try again.", "error");
-                            updateGenerateButton('Generate', false);
-                        }
+                return fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        var pages = data.query.pages;
+                        var pageId = Object.keys(pages)[0];
+                        return pageId !== "-1" && !pages[pageId].missing;
                     })
                     .catch(error => {
-                        clearTimeout(checkTimeout); // Clear the timeout on error too
-                        swal("Error", "There was an error checking the article existence. Please try again.", "error");
-                        updateGenerateButton('Generate', false);
+                        console.error("Error checking Wikipedia article existence:", error);
+                        throw error;
                     });
-            } else {
-                swal("Invalid URL", "Please enter a proper Wikipedia URL.", "error");
             }
-        });
 
-        // Consolidated event listener for the check status button
-        checkStatusBtn.addEventListener('click', function (event) {
-            event.preventDefault();
-            var token = tokenCheckInput.value;
+            function displayTokenMessage(message, display) {
+                $('#tokenMessageCard').css('display', display ? 'block' : 'none');
+                $('#tokenMessage').text(message);
+            }
+
+            function stopCheckingStatus() {
+                checkingStatus = false;
+                $('#tokenCheck').val('');
+                $('#checkStatusBtn').text('Check Status').off('click').on('click', checkingStatus);
+                $('#progressContainer').hide();
+                $('#statusText').text(''); // Clear the status message
+
+                // Clear the polling interval/timeout
+                if (statusPolling) {
+                    clearInterval(statusPolling);
+                    statusPolling = null; // Clear the reference
+                }
+            }
+
+            function checkVideoStatus(token) {
+                $('#checkStatusBtn').text('Stop').off('click').on('click', stopCheckingStatus);
+                checkingStatus = true;
+                
+                getStatus(); // Initiates the polling
+
+                function getStatus() {
+                    if (!checkingStatus) {
+                        stopCheckingStatus(); // Stop the checking if flag is down
+                        checkingStatus = true; // Reset the flag
+                        return;
+                    }
+                    $.ajax({
+                        url: `/api/video-status/${token}`,
+                        type: "GET",
+                        success: function (data) {
+                            if (data.Status === 'Completed') {
+                                $('#progressContainer').hide();
+                                // need to show download button in swal
+                                // Assuming data.VideoURL contains the URL to the video file
+                                swal({
+                                    title: "Video Ready",
+                                    text: "Your video is ready! Click the download button to download your video.",
+                                    icon: "success",
+                                    buttons: {
+                                        download: {
+                                            text: "Download",
+                                            value: "download",
+                                            className: "btn-large waves-effect waves-light deep-purple darken-1"
+                                        }
+                                    }
+                                }).then((value) => {
+                                    if (value === "download") {
+                                        // Create a temporary link element
+                                        var tempLink = document.createElement('a');
+                                        tempLink.href = data.VideoURL;
+                                        tempLink.setAttribute('download', ''); // You might want to give a filename here
+                                        tempLink.style.display = 'none';
+                                        document.body.appendChild(tempLink);
+                                        tempLink.click(); // Simulate the click to trigger the download
+                                        document.body.removeChild(tempLink); // Clean up
+                                    }
+                                });
+
+                                $('#downloadListCard').show().append('<div>'+
+                                    'Download Link Generated For Token: <a href="'+data.VideoURL+'" download>' + token +'</a></div>');
+
+                                // $('#downloadBtn').attr('href', data.VideoURL).show().attr('download', 'video.mp4');
+                                $('#statusText').text('Your video is ready!');
+                                $('#completionMessage').show().text('Your article video is ready!');
+                                stopCheckingStatus();
+                            } else {
+                                $('#statusText').text('Status: ' + data.Status);
+                            }
+                        },
+                        error: function () {
+                            $('#progressContainer').hide();
+                            swal("Error", "There was an error checking the video status.", "error");
+                            $('#checkStatusBtn').prop('disabled', false).text('Check Status');
+                        }
+                    });
+                }
+                // Start the polling process and save the interval reference
+                statusPolling = setInterval(getStatus, 5000);
+            }
+
+            function validateURL(url) {
+                if (!url) {
+                    return false;
+                }
+                var pattern = /^https?:\/\/(www\.)?([a-z]{2})\.wikipedia\.org\/wiki\/(.+)$/;
+                var invalidCharsPattern = /[#<>[\]|{}]/;
+                return pattern.test(url) && !invalidCharsPattern.test(url);
+            }
+
+            function validateToken(token) {
+            var tokenPattern = /^WV[0-9A-F]{10}$/i;
+            return tokenPattern.test(token);
+        }
+        function checkStatusBtn() {
+            var token = $('#tokenCheck').val();
             if (validateToken(token)) {
-                // Token is valid, proceed with status check
-                swal("Checking Token", "Please wait while we check the status of your video.", "info");
-                // Implement the API call to check the token status here
-                // ...
+                $('#progressContainer').show();
+                checkVideoStatus(token);
             } else {
-                // Token is invalid
                 swal("Invalid Token", "Please enter a valid token.", "error");
             }
-        });
-    });
+        }
+
+            
+
+            $('#generateBtn').click(function (event) {
+                event.preventDefault();
+                var wikipediaUrl = $('#wikipediaUrl').val();
+                if (validateURL(wikipediaUrl)) {
+                    updateGenerateButton('Checking...', true);
+                    var checkTimeout = setTimeout(function () {
+                        swal("Taking longer than usual", "Checking the article's existence is taking longer than expected. Please wait...", "info");
+                    }, 5000);
+
+                    checkArticleExists(wikipediaUrl)
+                        .then(articleExists => {
+                            clearTimeout(checkTimeout);
+                            if (articleExists) {
+                                handleArticleExistence(wikipediaUrl); // Refactored code to handle article existence
+                            } else {
+                                swal("Article Not Found", "The Wikipedia article does not exist. Please check the URL and try again.", "error");
+                                updateGenerateButton('Generate', false);
+                            }
+                        })
+                        .catch(error => {
+                            clearTimeout(checkTimeout);
+                            swal("Error", "There was an error checking the article existence. Please try again.", "error");
+                            updateGenerateButton('Generate', false);
+                        });
+                } else {
+                    swal("Invalid URL", "Please enter a proper Wikipedia URL.", "error");
+                }
+            });
+
+            // Refactored code for reusability
+            function handleArticleExistence(wikipediaUrl) {
+                generateToken().done(function (data) {
+                    var token = data.token;
+                    displayTokenMessage('Requested Url: ' + wikipediaUrl + 'Your generated token is: ' + token + '. Your request is being processed.', true);
+                    swal("Token Generated", "Your request is being processed. Your token is: " + token, "success");
+                    $('#wikipediaUrl').val('');
+                    updateGenerateButton('Generate', false);
+                    initiateVideoGeneration(wikipediaUrl, token); // Refactored code for video generation
+                }).fail(function () {
+                    swal("Failed to Generate Token", "There was an error generating the token.", "error");
+                    updateGenerateButton('Generate', false);
+                });
+            }
+
+            // Refactored code for initiating video generation
+            function initiateVideoGeneration(wikipediaUrl, token) {
+                generateVideo(wikipediaUrl, token).done(function (videoData) {
+                    console.log('Video generation started', videoData);
+                }).fail(function () {
+                    swal("Failed to Generate Video", "There was an error generating the video.", "error");
+                    updateGenerateButton('Generate', false);
+                });
+            }
+
 </script>
